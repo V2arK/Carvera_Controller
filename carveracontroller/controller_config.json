@@ -285,7 +285,7 @@
     {
         "type": "bool",
         "title": "Accept Shared Switch State",
-        "desc": "Update the light and other switch indicators from diagnose reports this controller did not request, such as those pushed by a multi-client gateway",
+        "desc": "Only for use behind a carvera-gateway. Update the light and other switch indicators from switch state the gateway pushes when another controller changes it",
         "section": "carvera",
         "key": "accept_unsolicited_diagnose",
         "default": "false"
@@ -293,7 +293,7 @@
     {
         "type": "bool",
         "title": "Follow Jobs Started Elsewhere",
-        "desc": "When another controller starts a job on the machine, such as through a multi-client gateway, download and open that file here",
+        "desc": "Only for use behind a carvera-gateway. When another controller starts a job on the machine, download and open that file here",
         "section": "carvera",
         "key": "follow_remote_play",
         "default": "false"

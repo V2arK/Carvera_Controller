@@ -4765,7 +4765,17 @@ class Makera(RelativeLayout):
         app = App.get_running_app()
         if remote_path == app.selected_remote_filename.replace("\\", "/"):
             return
-        if self.downloading or self.uploading or getattr(self, "loading_file", False):
+        # The path arrives over the network; it must stay inside the local copy of the SD card.
+        sd_relative_path = remote_path.removeprefix("/sd/")
+        if (
+            ".." in re.split(r"[\\/]", sd_relative_path)
+            or sd_relative_path.startswith(("/", "\\"))
+            or os.path.isabs(sd_relative_path)
+            or os.path.splitdrive(sd_relative_path)[0]
+        ):
+            self.controller.log.put((Controller.MSG_ERROR, f"Not opening {remote_path} played elsewhere: invalid path"))
+            return
+        if self.downloading or self.downloading_config or self.uploading or getattr(self, "loading_file", False):
             self.controller.log.put(
                 (
                     Controller.MSG_NORMAL,
@@ -4773,7 +4783,7 @@ class Makera(RelativeLayout):
                 )
             )
             return
-        local_path = os.path.join(self.temp_dir, remote_path.removeprefix("/sd/"))
+        local_path = os.path.join(self.temp_dir, sd_relative_path)
         app.selected_local_filename = local_path
         app.selected_remote_filename = remote_path
         self.wpb_play.value = 0
@@ -6122,6 +6132,8 @@ class Makera(RelativeLayout):
                     # Reset manual disconnect flag since we're now connected
                     self.controller._manual_disconnect = False
 
+                    self.bind_light_toggle_for_shared_state()
+
                     # Look for a camera, only one time per connection
                     if not self.camera_checked and self.controller.connection_type == CONN_WIFI:
                         self.camera_checked = True
@@ -7225,6 +7237,15 @@ class Makera(RelativeLayout):
         # Trigger an initial update by accessing the property object directly
         property_obj = self.__class__.__dict__["light_state"]
         property_obj.update_from_state(self)
+
+    def bind_light_toggle_for_shared_state(self):
+        """Bind the Light button on connect when switch state is shared, as config load waits for Idle."""
+        if not self.controller.accept_unsolicited_diagnose or hasattr(self, "_light_toggle_bound"):
+            return
+        self.bind_light_toggle_to_property()
+        self._light_toggle_bound = True
+        # Reports applied before the bind already moved the property's value, so no change event will follow.
+        self._on_light_state_changed(self, self.light_state)
 
     def _on_light_state_changed(self, instance, value):
         """Handle changes in the LightProperty and update the light toggle button"""
