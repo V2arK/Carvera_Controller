@@ -3108,6 +3108,9 @@ class Makera(RelativeLayout):
         self.controller = Controller(
             self.cnc, self.execCallback, Config.getboolean("carvera", "log_sent_receive", fallback=False)
         )
+        self.controller.accept_unsolicited_diagnose = Config.getboolean(
+            "carvera", "accept_unsolicited_diagnose", fallback=False
+        )
         # Set up reconnection callbacks
         self.controller.set_reconnection_callbacks(
             self.attempt_reconnect, self.on_reconnect_failed, self.on_reconnect_success
@@ -7340,6 +7343,11 @@ class Makera(RelativeLayout):
 
         if "log_sent_receive" in self.controller_setting_change_list:
             self.controller.log_sent_receive = self.controller_setting_change_list.get("log_sent_receive")
+
+        if "accept_unsolicited_diagnose" in self.controller_setting_change_list:
+            self.controller.accept_unsolicited_diagnose = Config.getboolean(
+                "carvera", "accept_unsolicited_diagnose", fallback=False
+            )
 
         if "high_precision_reamining_time_estimate" in self.controller_setting_change_list:
             raw_enabled = self.controller_setting_change_list.get("high_precision_reamining_time_estimate")

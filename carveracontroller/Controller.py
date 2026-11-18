@@ -39,6 +39,8 @@ LINK_CHECK_INTERVAL = 0.5  # s
 RX_BUFFER_SIZE = 128
 
 GPAT = re.compile(r"[A-Za-z]\s*[-+]?\d+.*")
+# A diagnose report opens with a numeric field such as "{S:0,5000|"; any other "{" text belongs in the MDI.
+DIAGNOSE_PAT = re.compile(r"^\{[A-Z]+:-?\d")
 FEEDPAT = re.compile(r"^(.*)[fF](\d+\.?\d+)(.*)$")
 
 STATUSPAT = re.compile(
@@ -179,6 +181,8 @@ class Controller:
         self.pausing = False
 
         self.diagnosing = False
+        # A multi-client gateway pushes diagnose reports this controller did not request.
+        self.accept_unsolicited_diagnose = False
 
         self.is_community_firmware = False
 
@@ -2062,11 +2066,13 @@ class Controller:
                 self.parseBracketAngle(line)
                 self.sio_status = False
             elif line[0] == "{":
-                if not self.sio_diagnose:
-                    self.log.put((self.MSG_NORMAL, line))
-                else:
+                if self.sio_diagnose:
                     self.parseBigParentheses(line)
                     self.sio_diagnose = False
+                elif self.accept_unsolicited_diagnose and DIAGNOSE_PAT.match(line):
+                    self.parseBigParentheses(line)
+                else:
+                    self.log.put((self.MSG_NORMAL, line))
             elif line[0] == "[" in line:
                 # Log raw WCS parameters before parsing
                 self.log.put((self.MSG_NORMAL, line))

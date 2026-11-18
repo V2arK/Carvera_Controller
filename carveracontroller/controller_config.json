@@ -284,6 +284,14 @@
     },
     {
         "type": "bool",
+        "title": "Accept Shared Switch State",
+        "desc": "Update the light and other switch indicators from diagnose reports this controller did not request, such as those pushed by a multi-client gateway",
+        "section": "carvera",
+        "key": "accept_unsolicited_diagnose",
+        "default": "false"
+    },
+    {
+        "type": "bool",
         "title": "Allow manual input of USB devices to use for connection",
         "desc": "When enabled, the USB connection menu includes a Manually Enter option to connect using a device path such as /dev/ttys020",
         "section": "carvera",
