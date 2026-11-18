@@ -292,6 +292,14 @@
     },
     {
         "type": "bool",
+        "title": "Follow Jobs Started Elsewhere",
+        "desc": "When another controller starts a job on the machine, such as through a multi-client gateway, download and open that file here",
+        "section": "carvera",
+        "key": "follow_remote_play",
+        "default": "false"
+    },
+    {
+        "type": "bool",
         "title": "Allow manual input of USB devices to use for connection",
         "desc": "When enabled, the USB connection menu includes a Manually Enter option to connect using a device path such as /dev/ttys020",
         "section": "carvera",

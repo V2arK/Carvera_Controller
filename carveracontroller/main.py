@@ -4254,6 +4254,13 @@ class Makera(RelativeLayout):
                     if remote_filetype != None:
                         self.filetype = remote_filetype[0].split("=")[1]
 
+                    # A multi-client gateway forwards the firmware's "Playing <path>" reply to `play`
+                    # to every controller, including those that did not start the job.
+                    if line.startswith("Playing ") and Config.getboolean(
+                        "carvera", "follow_remote_play", fallback=False
+                    ):
+                        Clock.schedule_once(partial(self.follow_remote_play, line), 0)
+
                     remote_decompercent = re.search("decompart = [0-9.]+", line)
                     if remote_decompercent != None:
                         self.decompercent = int(remote_decompercent[0].split("=")[1])
@@ -4748,6 +4755,33 @@ class Makera(RelativeLayout):
         self.downloading_config = False
         threading.Thread(target=self.doDownload, args=(remote_path, local_path)).start()
 
+    def follow_remote_play(self, line, *args):
+        """Open the file another controller started playing, without popups."""
+        # The firmware prints the decoded path; "Playing file resumed" carries none.
+        remote_playing = re.match(r"Playing (/sd/.+)$", line)
+        if remote_playing is None:
+            return
+        remote_path = remote_playing[1]
+        app = App.get_running_app()
+        if remote_path == app.selected_remote_filename.replace("\\", "/"):
+            return
+        if self.downloading or self.uploading or getattr(self, "loading_file", False):
+            self.controller.log.put(
+                (
+                    Controller.MSG_NORMAL,
+                    f"Not opening {remote_path} played elsewhere: a file transfer or load is running",
+                )
+            )
+            return
+        local_path = os.path.join(self.temp_dir, remote_path.removeprefix("/sd/"))
+        app.selected_local_filename = local_path
+        app.selected_remote_filename = remote_path
+        self.wpb_play.value = 0
+
+        self.downloading_file = remote_path
+        self.downloading_config = False
+        threading.Thread(target=self.doDownload, args=(remote_path, local_path, False, False), daemon=True).start()
+
     # -----------------------------------------------------------------------
     def start_back_up_config(self):
         # Workaround for the fact that backup isn't a proper setting. If we don't clear it, the
@@ -4953,7 +4987,7 @@ class Makera(RelativeLayout):
         return os.path.join(self.temp_dir, f"config_{safe}.txt")
 
     # -----------------------------------------------------------------------
-    def doDownload(self, remote_path, local_path, show_progress=True):
+    def doDownload(self, remote_path, local_path, show_progress=True, show_error_popup=True):
         app = App.get_running_app()
         was_config_download = self.downloading_config
         if not self.downloading_config and not os.path.exists(os.path.dirname(local_path)):
@@ -5034,7 +5068,10 @@ class Makera(RelativeLayout):
                     if md5_failed
                     else tr._("Download file error!")
                 )
-                Clock.schedule_once(partial(self.show_message_popup, error_msg, False), 0)
+                if show_error_popup:
+                    Clock.schedule_once(partial(self.show_message_popup, error_msg, False), 0)
+                else:
+                    self.controller.log.put((Controller.MSG_ERROR, error_msg))
         elif download_result >= 0:
             if download_result > 0:
                 # download success
